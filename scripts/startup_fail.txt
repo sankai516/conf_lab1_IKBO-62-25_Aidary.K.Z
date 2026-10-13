@@ -1,0 +1,3 @@
+ls
+wrong_cmd_trigger_error
+ls /should/never/be/executed
