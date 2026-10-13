@@ -1,0 +1,8 @@
+ls
+cd level1
+ls
+cd level2/level3/level4
+ls
+cd /
+ls
+exit

@@ -1,0 +1,27 @@
+{
+  "type": "dir",
+  "children": {
+    "etc": {
+      "type": "dir",
+      "children": {
+        "hostname": {
+          "type": "file",
+          "content": "bXktZW11bGF0b3ItcGMK"
+        }
+      }
+    },
+    "home": {
+      "type": "dir",
+      "children": {
+        "readme.txt": {
+          "type": "file",
+          "content": "V2VsY29tZSB0byBhcnRpZmljaWFsIHNoZWxsIQo="
+        }
+      }
+    },
+    "version.txt": {
+      "type": "file",
+      "content": "MS4wLjAK"
+    }
+  }
+}

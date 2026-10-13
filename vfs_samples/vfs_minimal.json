@@ -1,0 +1,9 @@
+{
+  "type": "dir",
+  "children": {
+    "hello.txt": {
+      "type": "file",
+      "content": "SGVsbG8gd29ybGQh"
+    }
+  }
+}

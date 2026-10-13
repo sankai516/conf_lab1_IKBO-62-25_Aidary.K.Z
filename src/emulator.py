@@ -7,6 +7,8 @@ import shlex
 import sys
 from pathlib import Path
 
+from vfs import VFS, VfsError
+
 
 def expand_env_vars(raw_line: str) -> str:
     """Expand real OS environment variables in raw line."""
@@ -27,17 +29,9 @@ def parse_input(raw_line: str) -> list[str]:
     return shlex.split(expanded_line)
 
 
-def handle_stub(cmd_name: str, args: list[str]) -> bool:
-    """Handle stub command printing name and args."""
-    args_repr = " ".join(args)
-    if args_repr:
-        print(f"stub: {cmd_name} called with args: {args_repr}")
-    else:
-        print(f"stub: {cmd_name} called with no args")
-    return True
-
-
-def execute_command(cmd: str, args: list[str]) -> tuple[bool, bool]:
+def execute_command(
+    cmd: str, args: list[str], vfs: VFS | None
+) -> tuple[bool, bool]:
     """Execute single command line token set.
 
     Returns tuple of (should_continue, success_status).
@@ -48,17 +42,66 @@ def execute_command(cmd: str, args: list[str]) -> tuple[bool, bool]:
             return True, False
         return False, True
 
-    if cmd in ("ls", "cd"):
-        return True, handle_stub(cmd, args)
+    if cmd == "ls":
+        return handle_ls(args, vfs)
+
+    if cmd == "cd":
+        return handle_cd(args, vfs)
 
     print(f"{cmd}: command not found", file=sys.stderr)
     return True, False
 
 
-def run_repl(vfs_name: str = "vfs") -> None:
+def handle_ls(args: list[str], vfs: VFS | None) -> tuple[bool, bool]:
+    """Handle ls command listing files and directories."""
+    if vfs is None:
+        target = args[0] if args else ""
+        print(f"stub: ls called with args: {target}")
+        return True, True
+
+    target = args[0] if args else None
+    try:
+        entries = vfs.list_dir(target)
+        for item in entries:
+            print(item)
+        return True, True
+    except VfsError as exc:
+        print(str(exc), file=sys.stderr)
+        return True, False
+
+
+def handle_cd(args: list[str], vfs: VFS | None) -> tuple[bool, bool]:
+    """Handle cd command changing directory."""
+    if vfs is None:
+        target = args[0] if args else ""
+        print(f"stub: cd called with args: {target}")
+        return True, True
+
+    if not args:
+        target = "/"
+    else:
+        target = args[0]
+
+    try:
+        vfs.change_dir(target)
+        return True, True
+    except VfsError as exc:
+        print(str(exc), file=sys.stderr)
+        return True, False
+
+
+def get_prompt(vfs_name: str, vfs: VFS | None) -> str:
+    """Format shell prompt string with current path."""
+    if vfs:
+        cwd = vfs.get_cwd_path()
+        return f"[{vfs_name}:{cwd}]$ "
+    return f"[{vfs_name}]$ "
+
+
+def run_repl(vfs_name: str, vfs: VFS | None) -> None:
     """Run interactive CLI read-eval-print loop."""
-    prompt = f"[{vfs_name}]$ "
     while True:
+        prompt = get_prompt(vfs_name, vfs)
         try:
             line = input(prompt)
         except EOFError:
@@ -68,31 +111,33 @@ def run_repl(vfs_name: str = "vfs") -> None:
         if not tokens:
             continue
 
-        should_continue, _ = execute_command(tokens[0], tokens[1:])
+        should_continue, _ = execute_command(tokens[0], tokens[1:], vfs)
         if not should_continue:
             break
 
 
-def run_script(script_path: str, vfs_name: str = "vfs") -> bool:
+def run_script(script_path: str, vfs_name: str, vfs: VFS | None) -> bool:
     """Execute commands from script file stopping on first error."""
     path = Path(script_path)
     if not path.is_file():
         print(f"script: file not found: {script_path}", file=sys.stderr)
         return False
 
-    prompt = f"[{vfs_name}]$ "
     with path.open("r", encoding="utf-8") as file:
         for line_num, line in enumerate(file, start=1):
             stripped = line.strip()
             if not stripped:
                 continue
 
+            prompt = get_prompt(vfs_name, vfs)
             print(f"{prompt}{stripped}")
             tokens = parse_input(stripped)
             if not tokens:
                 continue
 
-            should_continue, ok = execute_command(tokens[0], tokens[1:])
+            should_continue, ok = execute_command(
+                tokens[0], tokens[1:], vfs
+            )
             if not ok:
                 msg = f"script: error at line {line_num}: {stripped}"
                 print(msg, file=sys.stderr)
@@ -125,14 +170,22 @@ def main() -> None:
     args = parse_args()
     print_debug_config(args.vfs, args.script)
 
+    vfs_instance = None
+    if args.vfs:
+        try:
+            vfs_instance = VFS.load_from_json(args.vfs)
+        except VfsError as exc:
+            print(f"vfs load error: {exc}", file=sys.stderr)
+            sys.exit(1)
+
     vfs_name = Path(args.vfs).name if args.vfs else "vfs"
 
     if args.script:
-        success = run_script(args.script, vfs_name=vfs_name)
+        success = run_script(args.script, vfs_name, vfs_instance)
         if not success:
             sys.exit(1)
     else:
-        run_repl(vfs_name=vfs_name)
+        run_repl(vfs_name, vfs_instance)
 
 
 if __name__ == "__main__":

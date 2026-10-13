@@ -1,0 +1,29 @@
+{
+  "type": "dir",
+  "children": {
+    "level1": {
+      "type": "dir",
+      "children": {
+        "level2": {
+          "type": "dir",
+          "children": {
+            "level3": {
+              "type": "dir",
+              "children": {
+                "level4": {
+                  "type": "dir",
+                  "children": {
+                    "secret.txt": {
+                      "type": "file",
+                      "content": "dGhpcyBpcyBkZWVwbHkgbmVzdGVkIGRhdGEK"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
