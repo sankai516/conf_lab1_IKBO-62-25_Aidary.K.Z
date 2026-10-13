@@ -32,21 +32,23 @@ def parse_input(raw_line: str) -> list[str]:
 def execute_command(
     cmd: str, args: list[str], vfs: VFS | None
 ) -> tuple[bool, bool]:
-    """Execute single command line token set.
-
-    Returns tuple of (should_continue, success_status).
-    """
+    """Execute single command line token set."""
     if cmd == "exit":
         if args:
             print("exit: too many arguments", file=sys.stderr)
             return True, False
         return False, True
 
-    if cmd == "ls":
-        return handle_ls(args, vfs)
-
-    if cmd == "cd":
-        return handle_cd(args, vfs)
+    handlers = {
+        "ls": handle_ls,
+        "cd": handle_cd,
+        "cp": handle_cp,
+        "chown": handle_chown,
+        "tree": handle_tree,
+    }
+    handler = handlers.get(cmd)
+    if handler:
+        return handler(args, vfs)
 
     print(f"{cmd}: command not found", file=sys.stderr)
     return True, False
@@ -55,9 +57,8 @@ def execute_command(
 def handle_ls(args: list[str], vfs: VFS | None) -> tuple[bool, bool]:
     """Handle ls command listing files and directories."""
     if vfs is None:
-        target = args[0] if args else ""
-        print(f"stub: ls called with args: {target}")
-        return True, True
+        print("ls: no VFS loaded", file=sys.stderr)
+        return True, False
 
     target = args[0] if args else None
     try:
@@ -73,17 +74,65 @@ def handle_ls(args: list[str], vfs: VFS | None) -> tuple[bool, bool]:
 def handle_cd(args: list[str], vfs: VFS | None) -> tuple[bool, bool]:
     """Handle cd command changing directory."""
     if vfs is None:
-        target = args[0] if args else ""
-        print(f"stub: cd called with args: {target}")
-        return True, True
+        print("cd: no VFS loaded", file=sys.stderr)
+        return True, False
 
-    if not args:
-        target = "/"
-    else:
-        target = args[0]
-
+    target = "/" if not args else args[0]
     try:
         vfs.change_dir(target)
+        return True, True
+    except VfsError as exc:
+        print(str(exc), file=sys.stderr)
+        return True, False
+
+
+def handle_cp(args: list[str], vfs: VFS | None) -> tuple[bool, bool]:
+    """Handle cp command copying file or directory."""
+    if vfs is None:
+        print("cp: no VFS loaded", file=sys.stderr)
+        return True, False
+
+    if len(args) != 2:
+        print("cp: missing destination file operand", file=sys.stderr)
+        return True, False
+
+    try:
+        vfs.copy_node(args[0], args[1])
+        return True, True
+    except VfsError as exc:
+        print(str(exc), file=sys.stderr)
+        return True, False
+
+
+def handle_chown(args: list[str], vfs: VFS | None) -> tuple[bool, bool]:
+    """Handle chown command changing node owner."""
+    if vfs is None:
+        print("chown: no VFS loaded", file=sys.stderr)
+        return True, False
+
+    if len(args) != 2:
+        print("chown: invalid number of arguments", file=sys.stderr)
+        return True, False
+
+    try:
+        vfs.change_owner(args[0], args[1])
+        return True, True
+    except VfsError as exc:
+        print(str(exc), file=sys.stderr)
+        return True, False
+
+
+def handle_tree(args: list[str], vfs: VFS | None) -> tuple[bool, bool]:
+    """Handle tree command showing directory structure."""
+    if vfs is None:
+        print("tree: no VFS loaded", file=sys.stderr)
+        return True, False
+
+    target = args[0] if args else None
+    try:
+        lines = vfs.get_tree_lines(target)
+        for line in lines:
+            print(line)
         return True, True
     except VfsError as exc:
         print(str(exc), file=sys.stderr)
