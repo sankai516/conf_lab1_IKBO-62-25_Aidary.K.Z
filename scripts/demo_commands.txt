@@ -1,0 +1,10 @@
+tree
+ls
+cp version.txt version_backup.txt
+ls
+chown admin version_backup.txt
+cd etc
+ls
+cd ..
+tree
+exit
