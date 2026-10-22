@@ -111,4 +111,6 @@ class VFS:
         try:
             return base64.b64decode(raw_b64).decode("utf-8")
         except Exception as exc:
-            raise VfsError(f"cat: corrupted base64 data in {file_path}") from exc
+            raise VfsError(
+                f"cat: corrupted base64 data in {file_path}"
+            ) from exc
