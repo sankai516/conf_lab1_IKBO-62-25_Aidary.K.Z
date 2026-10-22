@@ -6,6 +6,7 @@ import re
 import shlex
 import sys
 from pathlib import Path
+REQUIRED_TWO_ARGS: int = 2
 
 from vfs import VFS, VfsError
 
@@ -92,7 +93,7 @@ def handle_cp(args: list[str], vfs: VFS | None) -> tuple[bool, bool]:
         print("cp: no VFS loaded", file=sys.stderr)
         return True, False
 
-    if len(args) != 2:
+    if len(args) != REQUIRED_TWO_ARGS:
         print("cp: missing destination file operand", file=sys.stderr)
         return True, False
 
@@ -110,7 +111,7 @@ def handle_chown(args: list[str], vfs: VFS | None) -> tuple[bool, bool]:
         print("chown: no VFS loaded", file=sys.stderr)
         return True, False
 
-    if len(args) != 2:
+    if len(args) != REQUIRED_TWO_ARGS:
         print("chown: invalid number of arguments", file=sys.stderr)
         return True, False
 

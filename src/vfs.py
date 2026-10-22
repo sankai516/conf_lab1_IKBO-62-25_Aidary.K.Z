@@ -112,7 +112,9 @@ class VFS:
         parts = self._resolve_parts(target_path)
         node = self._get_node(parts)
         if node is None:
-            raise VfsError(f"chown: cannot access '{target_path}': No such entry")
+            raise VfsError(
+                f"chown: cannot access '{target_path}': No such entry"
+            )
         node["owner"] = new_owner
 
     def copy_node(self, src_path: str, dst_path: str) -> None:
