@@ -1,10 +1,10 @@
 tree
 ls
-cp version.txt version_backup.txt
-ls
-chown admin version_backup.txt
-cd etc
-ls
-cd ..
+touch note.txt
+touch home/subnote.txt
+chown developer note.txt
 tree
+ls
+vfs-load vfs_samples/vfs_regular.json
+ls
 exit
