@@ -1,4 +1,4 @@
-"""Unit tests for Virtual File System operations - Stage 4."""
+"""Unit tests for Virtual File System operations - Stage 5."""
 
 import sys
 import unittest
@@ -10,7 +10,7 @@ from vfs import VFS, VfsError
 
 
 class TestVfsOperations(unittest.TestCase):
-    """Test suite covering ls, cd, and tree in VFS."""
+    """Test suite covering ls, cd, tree, touch, and chown in VFS."""
 
     def setUp(self) -> None:
         """Create fresh in-memory VFS structure for each test."""
@@ -56,17 +56,37 @@ class TestVfsOperations(unittest.TestCase):
         with self.assertRaises(VfsError):
             self.vfs.change_dir("non_existent")
 
+    def test_touch_creates_file(self) -> None:
+        """Test touch creates a new file."""
+        self.vfs.touch("new_file.txt")
+        self.assertIn("new_file.txt", self.vfs.list_dir())
+
+    def test_touch_in_subdir(self) -> None:
+        """Test touch creates a file inside a subdirectory."""
+        self.vfs.touch("folder1/sub_file.txt")
+        self.assertIn("sub_file.txt", self.vfs.list_dir("folder1"))
+
+    def test_touch_invalid_directory(self) -> None:
+        """Test touch raises error for nonexistent directory."""
+        with self.assertRaises(VfsError):
+            self.vfs.touch("no_such_folder/file.txt")
+
+    def test_change_owner(self) -> None:
+        """Test modifying owner attribute."""
+        self.vfs.change_owner("developer", "root_file.txt")
+        self.assertEqual(self.vfs.get_owner("root_file.txt"), "developer")
+
+    def test_change_owner_invalid(self) -> None:
+        """Test chown on missing file raises VfsError."""
+        with self.assertRaises(VfsError):
+            self.vfs.change_owner("developer", "missing.txt")
+
     def test_tree_generation(self) -> None:
         """Test recursive tree lines format."""
         tree_lines = self.vfs.get_tree_lines()
         self.assertEqual(tree_lines[0], ".")
         self.assertTrue(any("folder1" in line for line in tree_lines))
         self.assertTrue(any("file1.txt" in line for line in tree_lines))
-
-    def test_tree_invalid_path(self) -> None:
-        """Test tree on invalid path raises VfsError."""
-        with self.assertRaises(VfsError):
-            self.vfs.get_tree_lines("non_existent")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-"""Shell emulator prototype for configuration management lab 1 - Stage 4."""
+"""Shell emulator prototype for configuration management lab 1 - Stage 5."""
 
 import argparse
 import os
@@ -8,6 +8,8 @@ import sys
 from pathlib import Path
 
 from vfs import VFS, VfsError
+
+REQUIRED_TWO_ARGS: int = 2
 
 
 def expand_env_vars(raw_line: str) -> str:
@@ -30,7 +32,7 @@ def parse_input(raw_line: str) -> list[str]:
 
 
 def execute_command(
-    cmd: str, args: list[str], vfs: VFS | None
+    cmd: str, args: list[str], state: dict[str, Any]
 ) -> tuple[bool, bool]:
     """Execute single command line token set."""
     if cmd == "exit":
@@ -39,11 +41,28 @@ def execute_command(
             return True, False
         return False, True
 
+    vfs: VFS | None = state.get("vfs")
+
+    if cmd == "vfs-load":
+        if len(args) != 1:
+            print("vfs-load: missing or extra file operand", file=sys.stderr)
+            return True, False
+        try:
+            new_vfs = VFS.load_from_json(args[0])
+            state["vfs"] = new_vfs
+            state["vfs_name"] = Path(args[0]).name
+            return True, True
+        except VfsError as exc:
+            print(str(exc), file=sys.stderr)
+            return True, False
+
     handlers = {
         "ls": handle_ls,
         "cd": handle_cd,
         "clear": handle_clear,
         "tree": handle_tree,
+        "touch": handle_touch,
+        "chown": handle_chown,
     }
     handler = handlers.get(cmd)
     if handler:
@@ -86,7 +105,7 @@ def handle_cd(args: list[str], vfs: VFS | None) -> tuple[bool, bool]:
 
 
 def handle_clear(args: list[str], vfs: VFS | None) -> tuple[bool, bool]:
-    """Handle clear command to reset the terminal screen."""
+    """Handle clear command to reset terminal screen."""
     if args:
         print("clear: too many arguments", file=sys.stderr)
         return True, False
@@ -111,18 +130,57 @@ def handle_tree(args: list[str], vfs: VFS | None) -> tuple[bool, bool]:
         return True, False
 
 
-def get_prompt(vfs_name: str, vfs: VFS | None) -> str:
+def handle_touch(args: list[str], vfs: VFS | None) -> tuple[bool, bool]:
+    """Handle touch command creating new empty file."""
+    if vfs is None:
+        print("touch: no VFS loaded", file=sys.stderr)
+        return True, False
+
+    if not args:
+        print("touch: missing file operand", file=sys.stderr)
+        return True, False
+
+    try:
+        for file_arg in args:
+            vfs.touch(file_arg)
+        return True, True
+    except VfsError as exc:
+        print(str(exc), file=sys.stderr)
+        return True, False
+
+
+def handle_chown(args: list[str], vfs: VFS | None) -> tuple[bool, bool]:
+    """Handle chown command changing node owner."""
+    if vfs is None:
+        print("chown: no VFS loaded", file=sys.stderr)
+        return True, False
+
+    if len(args) != REQUIRED_TWO_ARGS:
+        print("chown: invalid number of arguments", file=sys.stderr)
+        return True, False
+
+    try:
+        vfs.change_owner(args[0], args[1])
+        return True, True
+    except VfsError as exc:
+        print(str(exc), file=sys.stderr)
+        return True, False
+
+
+def get_prompt(state: dict[str, Any]) -> str:
     """Format shell prompt string with current path."""
+    vfs: VFS | None = state.get("vfs")
+    vfs_name = state.get("vfs_name", "vfs")
     if vfs:
         cwd = vfs.get_cwd_path()
         return f"[{vfs_name}:{cwd}]$ "
     return f"[{vfs_name}]$ "
 
 
-def run_repl(vfs_name: str, vfs: VFS | None) -> None:
+def run_repl(state: dict[str, Any]) -> None:
     """Run interactive CLI read-eval-print loop."""
     while True:
-        prompt = get_prompt(vfs_name, vfs)
+        prompt = get_prompt(state)
         try:
             line = input(prompt)
         except EOFError:
@@ -132,12 +190,12 @@ def run_repl(vfs_name: str, vfs: VFS | None) -> None:
         if not tokens:
             continue
 
-        should_continue, _ = execute_command(tokens[0], tokens[1:], vfs)
+        should_continue, _ = execute_command(tokens[0], tokens[1:], state)
         if not should_continue:
             break
 
 
-def run_script(script_path: str, vfs_name: str, vfs: VFS | None) -> bool:
+def run_script(script_path: str, state: dict[str, Any]) -> bool:
     """Execute commands from script file stopping on first error."""
     path = Path(script_path)
     if not path.is_file():
@@ -150,14 +208,14 @@ def run_script(script_path: str, vfs_name: str, vfs: VFS | None) -> bool:
             if not stripped:
                 continue
 
-            prompt = get_prompt(vfs_name, vfs)
+            prompt = get_prompt(state)
             print(f"{prompt}{stripped}")
             tokens = parse_input(stripped)
             if not tokens:
                 continue
 
             should_continue, ok = execute_command(
-                tokens[0], tokens[1:], vfs
+                tokens[0], tokens[1:], state
             )
             if not ok:
                 msg = f"script: error at line {line_num}: {stripped}"
@@ -200,13 +258,17 @@ def main() -> None:
             sys.exit(1)
 
     vfs_name = Path(args.vfs).name if args.vfs else "vfs"
+    state: dict[str, Any] = {
+        "vfs": vfs_instance,
+        "vfs_name": vfs_name,
+    }
 
     if args.script:
-        success = run_script(args.script, vfs_name, vfs_instance)
+        success = run_script(args.script, state)
         if not success:
             sys.exit(1)
     else:
-        run_repl(vfs_name, vfs_instance)
+        run_repl(state)
 
 
 if __name__ == "__main__":

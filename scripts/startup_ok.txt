@@ -1,4 +1,10 @@
 ls
-ls -la /root
-cd $USERNAME
+tree
+touch note.txt
+touch home/subnote.txt
+ls
+chown developer note.txt
+tree
+vfs-load vfs_samples/vfs_regular.json
+ls
 exit

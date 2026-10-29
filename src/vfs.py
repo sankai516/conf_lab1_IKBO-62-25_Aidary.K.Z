@@ -1,4 +1,4 @@
-"""In-memory Virtual File System (VFS) loaded from JSON - Stage 4."""
+"""In-memory Virtual File System (VFS) loaded from JSON - Stage 5."""
 
 import json
 from pathlib import Path
@@ -96,6 +96,49 @@ class VFS:
             return [parts[-1]] if parts else []
         children = node.get("children", {})
         return sorted(list(children.keys()))
+
+    def get_owner(self, target_path: str) -> str:
+        """Get owner property of the specified node."""
+        parts = self._resolve_parts(target_path)
+        node = self._get_node(parts)
+        if node is None:
+            raise VfsError(f"No such file or directory: {target_path}")
+        return node.get("owner", "root")
+
+    def change_owner(self, new_owner: str, target_path: str) -> None:
+        """Change owner of specified file or directory."""
+        parts = self._resolve_parts(target_path)
+        node = self._get_node(parts)
+        if node is None:
+            raise VfsError(
+                f"chown: cannot access '{target_path}': No such entry"
+            )
+        node["owner"] = new_owner
+
+    def touch(self, file_path: str) -> None:
+        """Create empty file at target path or update its node."""
+        parts = self._resolve_parts(file_path)
+        if not parts:
+            raise VfsError("touch: missing file operand")
+
+        parent_parts = parts[:-1]
+        file_name = parts[-1]
+        parent_node = self._get_node(parent_parts)
+
+        if parent_node is None or parent_node.get("type") != "dir":
+            raise VfsError(f"touch: cannot touch '{file_path}': No such directory")
+
+        children = parent_node.setdefault("children", {})
+        if file_name in children:
+            if children[file_name].get("type") == "dir":
+                raise VfsError(f"touch: cannot touch '{file_path}': Is a directory")
+            return
+
+        children[file_name] = {
+            "type": "file",
+            "owner": "root",
+            "content": "",
+        }
 
     def get_tree_lines(self, start_path: str | None = None) -> list[str]:
         """Generate lines of directory hierarchy tree."""
