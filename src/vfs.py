@@ -1,7 +1,5 @@
-"""In-memory Virtual File System (VFS) loaded from JSON."""
+"""In-memory Virtual File System (VFS) loaded from JSON - Stage 4."""
 
-import base64
-import copy
 import json
 from pathlib import Path
 from typing import Any
@@ -98,50 +96,6 @@ class VFS:
             return [parts[-1]] if parts else []
         children = node.get("children", {})
         return sorted(list(children.keys()))
-
-    def get_owner(self, target_path: str) -> str:
-        """Get owner property of the specified node."""
-        parts = self._resolve_parts(target_path)
-        node = self._get_node(parts)
-        if node is None:
-            raise VfsError(f"No such file or directory: {target_path}")
-        return node.get("owner", "root")
-
-    def change_owner(self, new_owner: str, target_path: str) -> None:
-        """Change owner of specified file or directory."""
-        parts = self._resolve_parts(target_path)
-        node = self._get_node(parts)
-        if node is None:
-            raise VfsError(
-                f"chown: cannot access '{target_path}': No such entry"
-            )
-        node["owner"] = new_owner
-
-    def copy_node(self, src_path: str, dst_path: str) -> None:
-        """Copy file or directory from src to dst inside VFS."""
-        src_parts = self._resolve_parts(src_path)
-        src_node = self._get_node(src_parts)
-        if src_node is None:
-            raise VfsError(f"cp: cannot stat '{src_path}': No such entry")
-
-        dst_parts = self._resolve_parts(dst_path)
-        dst_node = self._get_node(dst_parts)
-
-        if dst_node and dst_node.get("type") == "dir":
-            leaf_name = src_parts[-1] if src_parts else "root_copy"
-            target_parent = dst_node
-            target_name = leaf_name
-        else:
-            if not dst_parts:
-                raise VfsError("cp: cannot overwrite root")
-            parent_parts = dst_parts[:-1]
-            target_name = dst_parts[-1]
-            target_parent = self._get_node(parent_parts)
-            if target_parent is None or target_parent.get("type") != "dir":
-                raise VfsError(f"cp: target parent directory not found")
-
-        copied_data = copy.deepcopy(src_node)
-        target_parent.setdefault("children", {})[target_name] = copied_data
 
     def get_tree_lines(self, start_path: str | None = None) -> list[str]:
         """Generate lines of directory hierarchy tree."""

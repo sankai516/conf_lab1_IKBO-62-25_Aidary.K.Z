@@ -1,4 +1,4 @@
-"""Shell emulator prototype for configuration management lab 1."""
+"""Shell emulator prototype for configuration management lab 1 - Stage 4."""
 
 import argparse
 import os
@@ -6,7 +6,6 @@ import re
 import shlex
 import sys
 from pathlib import Path
-REQUIRED_TWO_ARGS: int = 2
 
 from vfs import VFS, VfsError
 
@@ -43,8 +42,7 @@ def execute_command(
     handlers = {
         "ls": handle_ls,
         "cd": handle_cd,
-        "cp": handle_cp,
-        "chown": handle_chown,
+        "clear": handle_clear,
         "tree": handle_tree,
     }
     handler = handlers.get(cmd)
@@ -87,40 +85,13 @@ def handle_cd(args: list[str], vfs: VFS | None) -> tuple[bool, bool]:
         return True, False
 
 
-def handle_cp(args: list[str], vfs: VFS | None) -> tuple[bool, bool]:
-    """Handle cp command copying file or directory."""
-    if vfs is None:
-        print("cp: no VFS loaded", file=sys.stderr)
+def handle_clear(args: list[str], vfs: VFS | None) -> tuple[bool, bool]:
+    """Handle clear command to reset the terminal screen."""
+    if args:
+        print("clear: too many arguments", file=sys.stderr)
         return True, False
-
-    if len(args) != REQUIRED_TWO_ARGS:
-        print("cp: missing destination file operand", file=sys.stderr)
-        return True, False
-
-    try:
-        vfs.copy_node(args[0], args[1])
-        return True, True
-    except VfsError as exc:
-        print(str(exc), file=sys.stderr)
-        return True, False
-
-
-def handle_chown(args: list[str], vfs: VFS | None) -> tuple[bool, bool]:
-    """Handle chown command changing node owner."""
-    if vfs is None:
-        print("chown: no VFS loaded", file=sys.stderr)
-        return True, False
-
-    if len(args) != REQUIRED_TWO_ARGS:
-        print("chown: invalid number of arguments", file=sys.stderr)
-        return True, False
-
-    try:
-        vfs.change_owner(args[0], args[1])
-        return True, True
-    except VfsError as exc:
-        print(str(exc), file=sys.stderr)
-        return True, False
+    os.system("cls" if os.name == "nt" else "clear")
+    return True, True
 
 
 def handle_tree(args: list[str], vfs: VFS | None) -> tuple[bool, bool]:
