@@ -1,5 +1,6 @@
 """Shell emulator prototype for configuration management lab 1 - Stage 5."""
 
+from typing import Any
 import argparse
 import os
 import re
