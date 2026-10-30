@@ -126,12 +126,16 @@ class VFS:
         parent_node = self._get_node(parent_parts)
 
         if parent_node is None or parent_node.get("type") != "dir":
-            raise VfsError(f"touch: cannot touch '{file_path}': No such directory")
+            raise VfsError(
+                f"touch: cannot touch '{file_path}': No such directory"
+            )
 
         children = parent_node.setdefault("children", {})
         if file_name in children:
             if children[file_name].get("type") == "dir":
-                raise VfsError(f"touch: cannot touch '{file_path}': Is a directory")
+                raise VfsError(
+                    f"touch: cannot touch '{file_path}': Is a directory"
+                )
             return
 
         children[file_name] = {
